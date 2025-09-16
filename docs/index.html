@@ -6,10 +6,7 @@
 <title>Discompress — Under 10MB for Discord</title>
 <meta name="description" content="Shrink any video to under 10MB. One button. Done.">
 <style>
-  :root{
-    --bg:#0b0b12; --card:#141422; --text:#eaf2ff;
-    --a:#27f1ff; --b:#ff4df0; --muted:#9aa3b2;
-  }
+  :root{ --bg:#0b0b12; --text:#eaf2ff; --muted:#9aa3b2; --ring:#1f223b; --a:#27f1ff; --b:#ff4df0; }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
@@ -20,102 +17,72 @@
       var(--bg);
     display:grid; place-items:center; padding:24px;
   }
-  .wrap{width:min(720px,92vw)}
-  .frame{
-    padding:2px; border-radius:22px;
-    background:linear-gradient(135deg,var(--a),var(--b));
-    filter:drop-shadow(0 12px 40px rgba(0,0,0,.35));
-    animation:pulse 7s ease-in-out infinite;
-  }
-  .card{background:var(--card); border-radius:20px; padding:36px}
-  h1{margin:0 0 6px; font-size:28px; letter-spacing:.2px}
-  p.top{margin:0 0 22px; color:var(--muted)}
-  .cta{
-    display:grid; place-items:center; gap:12px; text-align:center;
-    padding:36px; border-radius:16px;
-    background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.10));
-  }
+  .wrap{width:min(720px,92vw); text-align:center}
+  h1{margin:0 0 8px; font-size:32px; letter-spacing:.2px}
+  p.sub{margin:0 0 22px; color:var(--muted)}
+  .panel{padding:28px 22px; border-radius:18px; background:#141422; box-shadow:0 12px 40px rgba(0,0,0,.35)}
 
-  /* The ONE BUTTON */
+  /* ONE BIG BUTTON */
   #pick{
-    --pad:18px;
-    position:relative; border:0; cursor:pointer; user-select:none;
-    padding:var(--pad) calc(var(--pad) * 1.5);
-    border-radius:18px; font-weight:800; letter-spacing:.4px;
-    color:#0a0a12; background:transparent; isolation:isolate;
+    position:relative; display:inline-block; border:0; cursor:pointer; user-select:none;
+    padding:16px 26px; border-radius:16px; font-weight:800; letter-spacing:.4px;
+    color:#0a0a12; background:transparent; isolation:isolate; margin:6px 0 14px;
     transition:transform .15s ease;
   }
   #pick:active{ transform:translateY(1px) }
-  /* gradient ring */
   #pick::before{
     content:""; position:absolute; inset:0; border-radius:16px; padding:2px;
     background:linear-gradient(135deg,var(--a),var(--b));
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor; mask-composite: exclude;
-    z-index:-1;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; z-index:-1;
   }
-  /* inner fill + animated shimmer */
   #pick::after{
     content:""; position:absolute; inset:4px; border-radius:14px;
     background:
-      linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.02)),
+      linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),
       radial-gradient(120% 200% at 0% 0%, rgba(39,241,255,.25), transparent 60%),
       radial-gradient(120% 200% at 100% 100%, rgba(255,77,240,.25), transparent 60%),
       #0f1022;
     z-index:-1;
   }
-  .glow{
-    position:absolute; inset:-18px; border-radius:22px; z-index:-2;
-    background:radial-gradient(180px 80px at 50% 20%, rgba(39,241,255,.5), transparent 60%),
-               radial-gradient(180px 80px at 50% 80%, rgba(255,77,240,.5), transparent 60%);
-    filter:blur(18px); opacity:.55; transition:opacity .2s ease;
-    pointer-events:none;
+  .ring{
+    width:220px; height:220px; border-radius:999px; margin:0 auto 12px;
+    background:
+      radial-gradient(100px 40px at 50% 20%, rgba(39,241,255,.45), transparent 60%),
+      radial-gradient(100px 40px at 50% 80%, rgba(255,77,240,.45), transparent 60%),
+      var(--ring);
+    filter:blur(20px); opacity:.55; transition:opacity .2s ease;
   }
-  #pick:hover + .glow, #pick:focus-visible + .glow{opacity:.85}
-  .hint{color:var(--muted); font-size:13px}
+  #pick:hover ~ .ring{opacity:.85}
 
-  /* Progress */
-  .bar{width:100%; height:10px; background:#1e2035; border-radius:999px; overflow:hidden}
-  .fill{width:0%; height:100%;
-        background:linear-gradient(90deg,var(--a),var(--b)); transition:width .09s linear}
-  .status{font-size:13px; color:var(--muted)}
-
-  @keyframes pulse{
-    0%,100%{filter:drop-shadow(0 12px 40px rgba(0,0,0,.35))}
-    50%{filter:drop-shadow(0 18px 54px rgba(0,0,0,.45))}
-  }
-  footer{margin-top:18px; text-align:center; opacity:.55; font-size:12px}
-  a, a:visited{color:var(--a); text-decoration:none}
+  .bar{width:100%; height:10px; background:#1e2035; border-radius:999px; overflow:hidden; margin-top:10px}
+  .fill{width:0%; height:100%; background:linear-gradient(90deg,var(--a),var(--b)); transition:width .09s linear}
+  .status{font-size:13px; color:var(--muted); margin-top:6px}
+  .small{font-size:12px; color:var(--muted); margin-top:12px}
+  footer{margin-top:18px; opacity:.55; font-size:12px}
 </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="frame">
-      <div class="card">
-        <h1>Discompress</h1>
-        <p class="top">Upload a video. Get it back under <b>10&nbsp;MB</b>. One button.</p>
+    <h1>Discompress</h1>
+    <p class="sub">Upload a video. Get it back under <b>10&nbsp;MB</b>. One button.</p>
 
-        <div class="cta">
-          <input id="file" type="file" accept="video/*" hidden>
-          <button id="pick">Upload Video</button>
-          <div class="glow" aria-hidden="true"></div>
-          <div class="hint">Perfect for Discord’s 10&nbsp;MB limit.</div>
+    <div class="panel">
+      <input id="file" type="file" accept="video/*" hidden>
+      <button id="pick">Upload Video</button>
+      <div class="ring" aria-hidden="true"></div>
 
-          <div style="width:100%; margin-top:10px">
-            <div class="bar"><div id="fill" class="fill"></div></div>
-            <div id="status" class="status">Idle</div>
-          </div>
-        </div>
-      </div>
+      <div class="bar"><div id="fill" class="fill"></div></div>
+      <div id="status" class="status">Idle</div>
+      <div class="small">Tip: shorter clips compress faster and look better.</div>
     </div>
+
     <footer>No ads. No clutter. Just smaller files.</footer>
   </div>
 
 <script>
-  // 🔗 Set your backend URL here:
-  const RENDER_URL = 'https://discompress.onrender.com'; // <-- change if your Render URL differs
+  // 🔗 BACKEND URL
+  const RENDER_URL = 'https://discompress.onrender.com'; // set your Render URL
   const API = RENDER_URL + '/api/upload';
 
   const btn = document.getElementById('pick');
@@ -133,35 +100,29 @@
   function setProgress(p){ fill.style.width = Math.max(0, Math.min(100, p)) + '%'; }
 
   function upload(file){
-    // Reset UI
     setProgress(0); setStatus('Preparing…');
-
-    const form = new FormData();
-    form.append('video', file);
+    const form = new FormData(); form.append('video', file);
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', API, true);
     xhr.responseType = 'blob';
 
-    // Upload progress (0 → ~80%)
+    // Upload progress → 0..80
     xhr.upload.onprogress = (e)=>{
       if (!e.lengthComputable) return;
-      const up = (e.loaded / e.total) * 80;           // cap at 80
+      const up = (e.loaded / e.total) * 80;
       setProgress(Math.round(up));
       setStatus(`Uploading… ${Math.round((e.loaded/e.total)*100)}%`);
     };
 
-    // Pretend processing progress (80 → 99%) while server works
+    // Processing animation → 80..99 while server works
     let procTimer = null;
     xhr.onreadystatechange = ()=>{
-      if (xhr.readyState === 2){       // headers received -> server started processing
+      if (xhr.readyState === 2){
         setStatus('Processing…');
-        // Smoothly tick from current to 99% while waiting
         let p = Math.max(parseInt(fill.style.width) || 80, 80);
         clearInterval(procTimer);
-        procTimer = setInterval(()=>{
-          if (p < 99) { p += 0.25; setProgress(p); }
-        }, 120);
+        procTimer = setInterval(()=>{ if (p < 99) { p += 0.25; setProgress(p); } }, 120);
       }
       if (xhr.readyState === 4){
         clearInterval(procTimer);
