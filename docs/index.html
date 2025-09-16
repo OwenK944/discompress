@@ -1,65 +1,98 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Discompress — Under 10MB for Discord</title>
-<meta name="description" content="Shrink any video to under 10MB. One button. Done.">
+<meta name="description" content="Upload a video. Get it back under 10MB. One button.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
-  :root{ --bg:#0b0b12; --text:#eaf2ff; --muted:#9aa3b2; --ring:#1f223b; --a:#27f1ff; --b:#ff4df0; }
+  :root{
+    --bg1:#0b0b12; --bg2:#121225; --bg3:#1a1028;
+    --text:#eaf2ff; --muted:#a1a8bd;
+    --a:#27f1ff; --b:#ff4df0;
+  }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
-    margin:0; color:var(--text); font:500 16px/1.5 system-ui,Segoe UI,Inter,Roboto;
+    margin:0; font:500 16px/1.5 "Sora",system-ui,Segoe UI,Inter,Roboto; color:var(--text);
+    /* Smooth, flowing ambient gradient background */
     background:
-      radial-gradient(1200px 600px at 85% -10%, #1a1a30 0%, transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, #17172a 0%, transparent 60%),
-      var(--bg);
-    display:grid; place-items:center; padding:24px;
+      radial-gradient(1200px 700px at 90% -10%, #1b1b33 0%, transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, #17172c 0%, transparent 60%),
+      conic-gradient(from 0deg at 60% 40%, #12122a, #0e1020, #17112a, #0e1020, #12122a);
+    animation:bgShift 18s linear infinite;
+    display:grid; place-items:center; padding:40px;
   }
-  .wrap{width:min(720px,92vw); text-align:center}
-  h1{margin:0 0 8px; font-size:32px; letter-spacing:.2px}
-  p.sub{margin:0 0 22px; color:var(--muted)}
-  .panel{padding:28px 22px; border-radius:18px; background:#141422; box-shadow:0 12px 40px rgba(0,0,0,.35)}
+  @keyframes bgShift{
+    0%{background-position:0 0, 0 0, 0 0}
+    50%{background-position:8% -6%, -6% 10%, 100px 60px}
+    100%{background-position:0 0, 0 0, 0 0}
+  }
 
-  /* ONE BIG BUTTON */
+  .wrap{max-width:900px; text-align:center}
+  h1{margin:0 0 8px; font-weight:800; font-size:42px; letter-spacing:.2px;
+     text-shadow:0 2px 20px #0007;}
+  .sub{margin:0 auto 28px; color:var(--muted); max-width:620px}
+
+  /* === The ONE big, fancy button (glass + neon + hover/click) === */
   #pick{
-    position:relative; display:inline-block; border:0; cursor:pointer; user-select:none;
-    padding:16px 26px; border-radius:16px; font-weight:800; letter-spacing:.4px;
-    color:#0a0a12; background:transparent; isolation:isolate; margin:6px 0 14px;
-    transition:transform .15s ease;
+    position:relative; display:inline-block; border:0; cursor:pointer;
+    padding:18px 28px; border-radius:18px; font-weight:800; letter-spacing:.4px;
+    color:#0a0a12; background:transparent; isolation:isolate;
+    transform:translateZ(0); transition:transform .15s ease, filter .2s ease;
   }
-  #pick:active{ transform:translateY(1px) }
+  #pick:active{ transform:translateY(1px) scale(.99) }
+  /* neon ring */
   #pick::before{
     content:""; position:absolute; inset:0; border-radius:16px; padding:2px;
     background:linear-gradient(135deg,var(--a),var(--b));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite:xor; mask-composite:exclude; z-index:-1;
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude;
+    z-index:-1; filter:drop-shadow(0 10px 25px rgba(255,77,240,.2));
   }
+  /* glass inner */
   #pick::after{
     content:""; position:absolute; inset:4px; border-radius:14px;
     background:
-      linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),
+      linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.02)),
       radial-gradient(120% 200% at 0% 0%, rgba(39,241,255,.25), transparent 60%),
       radial-gradient(120% 200% at 100% 100%, rgba(255,77,240,.25), transparent 60%),
-      #0f1022;
+      #0f1022aa;
+    backdrop-filter: blur(6px);
     z-index:-1;
   }
-  .ring{
-    width:220px; height:220px; border-radius:999px; margin:0 auto 12px;
-    background:
-      radial-gradient(100px 40px at 50% 20%, rgba(39,241,255,.45), transparent 60%),
-      radial-gradient(100px 40px at 50% 80%, rgba(255,77,240,.45), transparent 60%),
-      var(--ring);
-    filter:blur(20px); opacity:.55; transition:opacity .2s ease;
+  #pick:hover{ filter:drop-shadow(0 8px 28px rgba(39,241,255,.22)) drop-shadow(0 10px 38px rgba(255,77,240,.18)); }
+  /* subtle shine sweep on hover */
+  #pick .shine{
+    pointer-events:none; position:absolute; inset:4px; border-radius:14px; overflow:hidden;
   }
-  #pick:hover ~ .ring{opacity:.85}
+  #pick .shine::before{
+    content:""; position:absolute; top:0; left:-140%; width:40%; height:100%;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent);
+    transform:skewX(-20deg);
+  }
+  #pick:hover .shine::before{ animation:shine 1.2s ease; }
+  @keyframes shine{ 0%{ left:-140% } 100%{ left:140% } }
 
-  .bar{width:100%; height:10px; background:#1e2035; border-radius:999px; overflow:hidden; margin-top:10px}
-  .fill{width:0%; height:100%; background:linear-gradient(90deg,var(--a),var(--b)); transition:width .09s linear}
-  .status{font-size:13px; color:var(--muted); margin-top:6px}
-  .small{font-size:12px; color:var(--muted); margin-top:12px}
-  footer{margin-top:18px; opacity:.55; font-size:12px}
+  /* Progress bar (hidden until needed, fades in/out) */
+  .progress{
+    width:min(640px, 92vw); height:10px; margin:18px auto 0;
+    background:#1e2035; border-radius:999px; overflow:hidden;
+    opacity:0; transform:translateY(8px); transition:opacity .35s ease, transform .35s ease;
+    pointer-events:none; /* clicks pass through */
+  }
+  .progress.show{ opacity:1; transform:translateY(0) }
+  .fill{
+    width:0%; height:100%;
+    background:linear-gradient(90deg, var(--a), var(--b));
+    transition:width .09s linear;
+  }
+
+  /* Hidden file input */
+  #file{ display:none }
 </style>
 </head>
 <body>
@@ -67,68 +100,79 @@
     <h1>Discompress</h1>
     <p class="sub">Upload a video. Get it back under <b>10&nbsp;MB</b>. One button.</p>
 
-    <div class="panel">
-      <input id="file" type="file" accept="video/*" hidden>
-      <button id="pick">Upload Video</button>
-      <div class="ring" aria-hidden="true"></div>
+    <input id="file" type="file" accept="video/*">
+    <button id="pick">
+      Upload Video
+      <span class="shine" aria-hidden="true"></span>
+    </button>
 
-      <div class="bar"><div id="fill" class="fill"></div></div>
-      <div id="status" class="status">Idle</div>
-      <div class="small">Tip: shorter clips compress faster and look better.</div>
+    <div id="progress" class="progress" aria-hidden="true">
+      <div id="fill" class="fill"></div>
     </div>
-
-    <footer>No ads. No clutter. Just smaller files.</footer>
   </div>
 
 <script>
-  // 🔗 BACKEND URL
-  const RENDER_URL = 'https://discompress.onrender.com'; // set your Render URL
+  // 🔗 YOUR backend URL (Render)
+  const RENDER_URL = 'https://discompress.onrender.com'; // change if yours differs
   const API = RENDER_URL + '/api/upload';
 
-  const btn = document.getElementById('pick');
-  const input = document.getElementById('file');
+  const pick = document.getElementById('pick');
+  const file = document.getElementById('file');
+  const progress = document.getElementById('progress');
   const fill = document.getElementById('fill');
-  const statusEl = document.getElementById('status');
 
-  btn.addEventListener('click', ()=> input.click());
-  input.addEventListener('change', ()=>{
-    const f = input.files && input.files[0];
-    if (f) upload(f);
+  let processingTimer = null;
+
+  pick.addEventListener('click', () => file.click());
+  file.addEventListener('change', () => {
+    const f = file.files && file.files[0];
+    if (f) startUpload(f);
   });
 
-  function setStatus(t){ statusEl.textContent = t; }
-  function setProgress(p){ fill.style.width = Math.max(0, Math.min(100, p)) + '%'; }
+  function showProgress(show){
+    if (show) progress.classList.add('show');
+    else progress.classList.remove('show');
+  }
+  function setProgress(pct){
+    const p = Math.max(0, Math.min(100, pct));
+    fill.style.width = p + '%';
+  }
 
-  function upload(file){
-    setProgress(0); setStatus('Preparing…');
-    const form = new FormData(); form.append('video', file);
+  function startUpload(f){
+    // Reset UI
+    setProgress(0);
+    showProgress(true);
+    pick.disabled = true;
+    pick.style.opacity = .8;
+
+    const form = new FormData();
+    form.append('video', f);
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', API, true);
     xhr.responseType = 'blob';
 
-    // Upload progress → 0..80
-    xhr.upload.onprogress = (e)=>{
+    // Upload progress drives 0..80
+    xhr.upload.onprogress = (e) => {
       if (!e.lengthComputable) return;
       const up = (e.loaded / e.total) * 80;
       setProgress(Math.round(up));
-      setStatus(`Uploading… ${Math.round((e.loaded/e.total)*100)}%`);
     };
 
-    // Processing animation → 80..99 while server works
-    let procTimer = null;
-    xhr.onreadystatechange = ()=>{
-      if (xhr.readyState === 2){
-        setStatus('Processing…');
+    // When server starts responding, simulate 80..99 while encoding
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState === 2){ // headers received
         let p = Math.max(parseInt(fill.style.width) || 80, 80);
-        clearInterval(procTimer);
-        procTimer = setInterval(()=>{ if (p < 99) { p += 0.25; setProgress(p); } }, 120);
+        clearInterval(processingTimer);
+        processingTimer = setInterval(() => {
+          if (p < 99) { p += 0.25; setProgress(p); }
+        }, 120);
       }
       if (xhr.readyState === 4){
-        clearInterval(procTimer);
+        clearInterval(processingTimer);
         if (xhr.status === 200){
-          setProgress(100);
-          setStatus('Downloading…');
+          setProgress(100);        // only hit 100% on success
+          // Auto-download
           const blob = xhr.response;
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -136,14 +180,32 @@
           a.download = 'discompress_video.mp4';
           a.click();
           URL.revokeObjectURL(url);
-          setStatus('Done ✅');
+          // Fade out progress after a moment
+          setTimeout(() => { showProgress(false); setProgress(0); }, 700);
         } else {
-          setStatus('Failed. Try a shorter clip or a lower-bitrate source.');
+          // Briefly show an error by flashing the bar, then hide
+          fill.style.transition = 'none';
+          fill.style.width = '100%';
+          fill.style.background = '#ff5c80';
+          setTimeout(() => {
+            fill.style.transition = 'width .09s linear';
+            fill.style.background = 'linear-gradient(90deg, var(--a), var(--b))';
+            showProgress(false); setProgress(0);
+          }, 900);
         }
+        pick.disabled = false;
+        pick.style.opacity = 1;
+        file.value = ''; // reset input
       }
     };
 
-    xhr.onerror = ()=> setStatus('Network error. Try again.');
+    xhr.onerror = () => {
+      clearInterval(processingTimer);
+      showProgress(false); setProgress(0);
+      pick.disabled = false; pick.style.opacity = 1;
+      file.value = '';
+    };
+
     xhr.send(form);
   }
 </script>
