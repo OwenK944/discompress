@@ -1,213 +1,137 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Discompress — Under 10MB for Discord</title>
-<meta name="description" content="Upload a video. Get it back under 10MB. One button.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700;800&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --bg1:#0b0b12; --bg2:#121225; --bg3:#1a1028;
-    --text:#eaf2ff; --muted:#a1a8bd;
-    --a:#27f1ff; --b:#ff4df0;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0; font:500 16px/1.5 "Sora",system-ui,Segoe UI,Inter,Roboto; color:var(--text);
-    /* Smooth, flowing ambient gradient background */
-    background:
-      radial-gradient(1200px 700px at 90% -10%, #1b1b33 0%, transparent 60%),
-      radial-gradient(900px 600px at -10% 110%, #17172c 0%, transparent 60%),
-      conic-gradient(from 0deg at 60% 40%, #12122a, #0e1020, #17112a, #0e1020, #12122a);
-    animation:bgShift 18s linear infinite;
-    display:grid; place-items:center; padding:40px;
-  }
-  @keyframes bgShift{
-    0%{background-position:0 0, 0 0, 0 0}
-    50%{background-position:8% -6%, -6% 10%, 100px 60px}
-    100%{background-position:0 0, 0 0, 0 0}
-  }
+// Discompress backend — API only, memory-safe on Render Free
+const express = require('express');
+const cors = require('cors');
+const multer = require('multer');
+const ffmpeg = require('fluent-ffmpeg');
+const fs = require('fs');
+const fsp = fs.promises;
+const path = require('path');
 
-  .wrap{max-width:900px; text-align:center}
-  h1{margin:0 0 8px; font-weight:800; font-size:42px; letter-spacing:.2px;
-     text-shadow:0 2px 20px #0007;}
-  .sub{margin:0 auto 28px; color:var(--muted); max-width:620px}
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+const ffprobePath = require('@ffprobe-installer/ffprobe').path;
+ffmpeg.setFfmpegPath(ffmpegPath);
+ffmpeg.setFfprobePath(ffprobePath);
 
-  /* === The ONE big, fancy button (glass + neon + hover/click) === */
-  #pick{
-    position:relative; display:inline-block; border:0; cursor:pointer;
-    padding:18px 28px; border-radius:18px; font-weight:800; letter-spacing:.4px;
-    color:#0a0a12; background:transparent; isolation:isolate;
-    transform:translateZ(0); transition:transform .15s ease, filter .2s ease;
-  }
-  #pick:active{ transform:translateY(1px) scale(.99) }
-  /* neon ring */
-  #pick::before{
-    content:""; position:absolute; inset:0; border-radius:16px; padding:2px;
-    background:linear-gradient(135deg,var(--a),var(--b));
-    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite:xor; mask-composite:exclude;
-    z-index:-1; filter:drop-shadow(0 10px 25px rgba(255,77,240,.2));
-  }
-  /* glass inner */
-  #pick::after{
-    content:""; position:absolute; inset:4px; border-radius:14px;
-    background:
-      linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.02)),
-      radial-gradient(120% 200% at 0% 0%, rgba(39,241,255,.25), transparent 60%),
-      radial-gradient(120% 200% at 100% 100%, rgba(255,77,240,.25), transparent 60%),
-      #0f1022aa;
-    backdrop-filter: blur(6px);
-    z-index:-1;
-  }
-  #pick:hover{ filter:drop-shadow(0 8px 28px rgba(39,241,255,.22)) drop-shadow(0 10px 38px rgba(255,77,240,.18)); }
-  /* subtle shine sweep on hover */
-  #pick .shine{
-    pointer-events:none; position:absolute; inset:4px; border-radius:14px; overflow:hidden;
-  }
-  #pick .shine::before{
-    content:""; position:absolute; top:0; left:-140%; width:40%; height:100%;
-    background:linear-gradient(90deg, transparent, rgba(255,255,255,.25), transparent);
-    transform:skewX(-20deg);
-  }
-  #pick:hover .shine::before{ animation:shine 1.2s ease; }
-  @keyframes shine{ 0%{ left:-140% } 100%{ left:140% } }
+const app = express();
+const FRONTEND = 'https://owenk944.github.io'; // whitelist your Pages origin
+app.use(cors({ origin: (o, cb)=> (!o || o.startsWith(FRONTEND)) ? cb(null,true) : cb(new Error('CORS')) }));
 
-  /* Progress bar (hidden until needed, fades in/out) */
-  .progress{
-    width:min(640px, 92vw); height:10px; margin:18px auto 0;
-    background:#1e2035; border-radius:999px; overflow:hidden;
-    opacity:0; transform:translateY(8px); transition:opacity .35s ease, transform .35s ease;
-    pointer-events:none; /* clicks pass through */
-  }
-  .progress.show{ opacity:1; transform:translateY(0) }
-  .fill{
-    width:0%; height:100%;
-    background:linear-gradient(90deg, var(--a), var(--b));
-    transition:width .09s linear;
-  }
+const TMP_DIR = './tmp';
+const TARGET_MB   = parseFloat(process.env.TARGET_MB   || '9.8');
+const AUDIO_KBPS  = parseInt (process.env.AUDIO_KBPS  || '96', 10);
+const MAX_WIDTH   = parseInt (process.env.MAX_WIDTH   || '1280', 10);
+const MAX_UPLOAD_MB = parseInt(process.env.MAX_UPLOAD_MB || '300', 10); // keep moderate for Render free
+const CONCURRENCY = parseInt (process.env.CONCURRENCY || '1', 10);     // serialize to prevent OOM
 
-  /* Hidden file input */
-  #file{ display:none }
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <h1>Discompress</h1>
-    <p class="sub">Upload a video. Get it back under <b>10&nbsp;MB</b>. One button.</p>
+const upload = multer({
+  dest: TMP_DIR,
+  limits: { fileSize: MAX_UPLOAD_MB * 1024 * 1024 }
+});
 
-    <input id="file" type="file" accept="video/*">
-    <button id="pick">
-      Upload Video
-      <span class="shine" aria-hidden="true"></span>
-    </button>
+(async () => { if (!fs.existsSync(TMP_DIR)) await fsp.mkdir(TMP_DIR, { recursive: true }); })().catch(console.error);
 
-    <div id="progress" class="progress" aria-hidden="true">
-      <div id="fill" class="fill"></div>
-    </div>
-  </div>
+app.get('/health', (_, res) => res.status(200).send('OK'));
 
-<script>
-  // 🔗 YOUR backend URL (Render)
-  const RENDER_URL = 'https://discompress.onrender.com'; // change if yours differs
-  const API = RENDER_URL + '/api/upload';
-
-  const pick = document.getElementById('pick');
-  const file = document.getElementById('file');
-  const progress = document.getElementById('progress');
-  const fill = document.getElementById('fill');
-
-  let processingTimer = null;
-
-  pick.addEventListener('click', () => file.click());
-  file.addEventListener('change', () => {
-    const f = file.files && file.files[0];
-    if (f) startUpload(f);
+// simple FIFO queue to cap concurrent encodes
+const queue = [];
+let running = 0;
+function enqueue(jobFn){
+  return new Promise((resolve, reject)=>{
+    queue.push({ jobFn, resolve, reject });
+    pump();
   });
+}
+function pump(){
+  if (running >= CONCURRENCY || queue.length === 0) return;
+  const { jobFn, resolve, reject } = queue.shift();
+  running++;
+  Promise.resolve().then(jobFn)
+    .then((v)=>{ running--; pump(); resolve(v); })
+    .catch((e)=>{ running--; pump(); reject(e); });
+}
 
-  function showProgress(show){
-    if (show) progress.classList.add('show');
-    else progress.classList.remove('show');
-  }
-  function setProgress(pct){
-    const p = Math.max(0, Math.min(100, pct));
-    fill.style.width = p + '%';
-  }
+app.post('/api/upload', upload.single('video'), async (req, res) => {
+  const inputPath = req.file?.path;
+  if (!inputPath) return res.status(400).send('No file uploaded');
 
-  function startUpload(f){
-    // Reset UI
-    setProgress(0);
-    showProgress(true);
-    pick.disabled = true;
-    pick.style.opacity = .8;
+  try {
+    const { filePath, outName } = await enqueue(async ()=>{
+      const originalName = (req.file.originalname || 'video').replace(/[^\w.\- ]+/g, '');
+      const base = originalName.replace(/\.[^.]+$/, '');
+      const outName = `discompress_${base}.mp4`;
+      const firstOut = path.join(TMP_DIR, `${Date.now()}_${outName}`);
 
-    const form = new FormData();
-    form.append('video', f);
+      const meta = await probe(inputPath);
+      const duration = Math.max(1, meta.format?.duration || 1);
+      const targetBytes = Math.floor(TARGET_MB * 1024 * 1024);
+      const totalKbps = Math.max(180, Math.floor((targetBytes * 8) / duration / 1000));
+      const initialVideoKbps = Math.max(56, totalKbps - AUDIO_KBPS);
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', API, true);
-    xhr.responseType = 'blob';
+      // multi-pass: try progressively lower bitrates
+      const factors = [1.00, 0.82, 0.68, 0.56];
+      let lastOut = firstOut;
+      let vkbps = initialVideoKbps;
 
-    // Upload progress drives 0..80
-    xhr.upload.onprogress = (e) => {
-      if (!e.lengthComputable) return;
-      const up = (e.loaded / e.total) * 80;
-      setProgress(Math.round(up));
-    };
-
-    // When server starts responding, simulate 80..99 while encoding
-    xhr.onreadystatechange = () => {
-      if (xhr.readyState === 2){ // headers received
-        let p = Math.max(parseInt(fill.style.width) || 80, 80);
-        clearInterval(processingTimer);
-        processingTimer = setInterval(() => {
-          if (p < 99) { p += 0.25; setProgress(p); }
-        }, 120);
+      for (let i=0; i<factors.length; i++){
+        const out = i===0 ? firstOut : path.join(TMP_DIR, `${Date.now()}_${i}_${outName}`);
+        if (i>0) vkbps = Math.max(48, Math.floor(initialVideoKbps * factors[i]));
+        await encode(inputPath, out, vkbps, AUDIO_KBPS, MAX_WIDTH);
+        const sz = (await fsp.stat(out)).size;
+        lastOut = out;
+        if (sz <= targetBytes) break;
       }
-      if (xhr.readyState === 4){
-        clearInterval(processingTimer);
-        if (xhr.status === 200){
-          setProgress(100);        // only hit 100% on success
-          // Auto-download
-          const blob = xhr.response;
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'discompress_video.mp4';
-          a.click();
-          URL.revokeObjectURL(url);
-          // Fade out progress after a moment
-          setTimeout(() => { showProgress(false); setProgress(0); }, 700);
-        } else {
-          // Briefly show an error by flashing the bar, then hide
-          fill.style.transition = 'none';
-          fill.style.width = '100%';
-          fill.style.background = '#ff5c80';
-          setTimeout(() => {
-            fill.style.transition = 'width .09s linear';
-            fill.style.background = 'linear-gradient(90deg, var(--a), var(--b))';
-            showProgress(false); setProgress(0);
-          }, 900);
-        }
-        pick.disabled = false;
-        pick.style.opacity = 1;
-        file.value = ''; // reset input
-      }
-    };
+      return { filePath: lastOut, outName, firstOut };
+    });
 
-    xhr.onerror = () => {
-      clearInterval(processingTimer);
-      showProgress(false); setProgress(0);
-      pick.disabled = false; pick.style.opacity = 1;
-      file.value = '';
-    };
-
-    xhr.send(form);
+    await streamDownload(res, filePath, outName);
+    // cleanup
+    cleanupLater([inputPath, filePath]);
+  } catch (e) {
+    console.error('encode error:', e);
+    cleanupLater([inputPath]);
+    res.status(500).send('Compression failed. Try a shorter clip or lower source bitrate.');
   }
-</script>
-</body>
-</html>
+});
+
+function probe(file){ return new Promise((res, rej)=> ffmpeg.ffprobe(file, (e,d)=> e?rej(e):res(d))); }
+function encode(input, output, videoKbps, audioKbps, maxWidth){
+  return new Promise((resolve, reject)=>{
+    const scale = `scale='min(${maxWidth},iw)':-2`;
+    ffmpeg(input)
+      .outputOptions([
+        // keep memory use low & deterministic
+        '-threads','1',
+        '-movflags','faststart',
+        '-pix_fmt','yuv420p',
+        '-vf', scale,
+        '-preset','veryfast',
+        '-profile:v','main',
+        '-level','4.0',
+        '-maxrate', `${Math.floor(videoKbps * 1.15)}k`,
+        '-bufsize', `${Math.floor(videoKbps * 2)}k`
+      ])
+      .videoCodec('libx264').audioCodec('aac')
+      .videoBitrate(`${videoKbps}k`).audioBitrate(`${audioKbps}k`)
+      .format('mp4')
+      .on('error', reject).on('end', resolve)
+      .save(output);
+  });
+}
+async function streamDownload(res, filePath, name){
+  res.setHeader('Content-Type','video/mp4');
+  res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
+  await new Promise((resolve, reject)=>{
+    const s = fs.createReadStream(filePath);
+    s.on('error', reject); s.on('close', resolve); s.pipe(res);
+  });
+}
+function cleanupLater(paths){
+  setTimeout(()=>{ for (const p of paths) if (p && fs.existsSync(p)) fs.unlink(p,()=>{}); }, 12_000);
+}
+
+// root → 404 (no UI on backend)
+app.get('/', (_, res)=> res.status(404).send(''));
+app.use((_, res)=> res.status(404).send(''));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, ()=> console.log('API ready on :'+PORT));
