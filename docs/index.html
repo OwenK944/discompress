@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Discompress — Under 10MB for Discord</title>
-<meta name="description" content="Upload a video. Get it back under 10MB. One button.">
+<meta name="description" content="Upload a video. Get it back under 10MB. Perfect for avoiding Discord Nitro fees.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Clean, non-generic display font -->
@@ -86,7 +86,7 @@
 <body>
   <div class="wrap">
     <h1>Discompress</h1>
-    <p class="sub">Upload a video. Get it back under <b>10&nbsp;MB</b>. One button.</p>
+    <p class="sub">Upload a video. Get it back under <b>10&nbsp;MB</b>. Perfect for sharing your videos on Discord without having your creativity blocked by a Nitro subscription.</p>
 
     <input id="file" type="file" accept="video/*">
     <button id="pick">Upload Video<span class="shine" aria-hidden="true"></span></button>
@@ -140,7 +140,7 @@
   // ETA heuristic: base + per-MB on free CPU; extends automatically if needed
   function estimateSeconds(file){
     const MB = file.size / (1024*1024);
-    return Math.max(10, Math.round(6 + 1.0 * MB)); // tweakable
+    return Math.max(30, Math.round(20 + 2.2 * MB)); // tweakable
   }
   const formatS = (s)=>{
     s = Math.max(0, Math.round(s));
